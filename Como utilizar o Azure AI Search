@@ -1,0 +1,175 @@
+Introdução ao Azure AI Search
+O Azure AI Search (anteriormente Azure Cognitive Search) é um serviço de busca em nuvem que oferece recursos avançados de indexação e consulta para aplicativos. Ele permite criar experiências de busca sofisticadas sobre seus dados estruturados e não estruturados.
+
+Configuração Inicial
+1. Criar o recurso no Azure
+Acesse o Portal Azure
+
+Pesquise por "Azure AI Search" e crie um novo serviço
+
+Escolha a camada adequada (Free para testes, Standard para produção)
+
+Anote o nome do serviço e as chaves de API
+
+2. Escolher o método de interação
+Você pode trabalhar com o Azure AI Search através de:
+
+Portal Azure (interface gráfica)
+
+SDKs (Python, .NET, Java, JavaScript)
+
+API REST diretamente
+
+Azure CLI
+
+Fluxo Básico de Trabalho
+1. Criar um índice
+Um índice é como uma tabela de banco de dados que contém seus dados pesquisáveis.
+
+Exemplo usando Python:
+
+python
+from azure.core.credentials import AzureKeyCredential
+from azure.search.documents.indexes import SearchIndexClient
+from azure.search.documents.indexes.models import *
+
+service_name = "nome-do-seu-servico"
+admin_key = "sua-chave-administrativa"
+endpoint = f"https://{service_name}.search.windows.net"
+
+# Definição dos campos do índice
+fields = [
+    SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+    SearchableField(name="nome", type=SearchFieldDataType.String),
+    SearchableField(name="descricao", type=SearchFieldDataType.String, analyzer_name="pt.microsoft"),
+    SimpleField(name="preco", type=SearchFieldDataType.Double, filterable=True),
+    SimpleField(name="disponivel", type=SearchFieldDataType.Boolean, filterable=True)
+]
+
+# Criar o cliente e o índice
+credential = AzureKeyCredential(admin_key)
+index_client = SearchIndexClient(endpoint, credential)
+index = SearchIndex(name="produtos", fields=fields)
+index_client.create_index(index)
+2. Carregar dados (Indexação)
+Você pode carregar dados de várias fontes:
+
+Manualmente (como no exemplo abaixo)
+
+Usando indexadores para conectar a Azure Blob Storage, Cosmos DB, SQL Database, etc.
+
+Exemplo de carregamento de dados:
+
+python
+from azure.search.documents import SearchClient
+
+search_client = SearchClient(endpoint, "produtos", credential)
+
+documents = [
+    {"id": "1", "nome": "Smartphone", "descricao": "Smartphone avançado com câmera de 48MP", "preco": 2999.90, "disponivel": True},
+    {"id": "2", "nome": "Notebook", "descricao": "Notebook leve com 16GB RAM", "preco": 4599.00, "disponivel": True}
+]
+
+search_client.upload_documents(documents=documents)
+3. Consultar o índice
+Você pode fazer vários tipos de consultas:
+
+Consulta simples:
+
+python
+results = search_client.search(search_text="notebook")
+
+for result in results:
+    print(f"{result['nome']}: {result['descricao']} - R${result['preco']}")
+Consulta com filtros:
+
+python
+results = search_client.search(
+    search_text="smartphone",
+    filter="preco lt 3000 and disponivel eq true"
+)
+Consulta com ordenação:
+
+python
+results = search_client.search(
+    search_text="*",
+    order_by=["preco desc"]
+)
+Recursos Avançados
+1. Enriquecimento com IA
+Integre habilidades cognitivas para enriquecer seus dados durante a indexação:
+
+Extração de texto de imagens (OCR)
+
+Detecção de idioma
+
+Reconhecimento de entidades
+
+Análise de sentimentos
+
+2. Busca Vetorial
+Combine busca textual com busca vetorial para implementar busca semântica:
+
+python
+# Requer campos vetoriais no seu índice
+vector_query = VectorizedQuery(
+    vector=[0.1, 0.2, ..., 0.8],  # Seu vetor de embedding
+    k_nearest_neighbors=3,
+    fields="descricao_vector"
+)
+
+results = search_client.search(
+    search_text="produtos eletrônicos",
+    vector_queries=[vector_query],
+    top=5
+)
+3. Auto-completar e Sugestões
+python
+from azure.search.documents import SearchClient
+
+suggest_client = SearchClient(endpoint, "produtos", credential)
+suggestions = suggest_client.suggest(
+    search_text="not",
+    suggester_name="sg"  # Definido no índice
+)
+
+for suggestion in suggestions:
+    print(suggestion["text"])
+Melhores Práticas
+Design de Índice:
+
+Defina campos chave adequadamente
+
+Escolha entre Searchable, Filterable, Sortable conforme necessidade
+
+Use analisadores linguísticos para campos de texto
+
+Performance:
+
+Use filtros para reduzir o espaço de busca
+
+Considere particionar índices grandes
+
+Ajuste os parâmetros de indexação conforme volume de dados
+
+Segurança:
+
+Use chaves de consulta para aplicativos clientes
+
+Restrinja chaves administrativas
+
+Considere integração com Azure Active Directory para autenticação
+
+Monitoramento e Análise
+Acesse métricas no Portal Azure (latência, QPS, etc.)
+
+Configure alertas para problemas de desempenho
+
+Use o Search Traffic Analyzer para entender padrões de consulta
+
+Limitações e Cotas
+Tamanho máximo de documento: 16MB
+
+Máximo de índices por serviço: depende da camada
+
+Operações por segundo: varia conforme SKU
